@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { computeTarget, startTarget } from "./progression";
-import { defaultProgram, importedLogs } from "./program";
+import { PROGRAM_VERSION, defaultProgram, importedLogs } from "./program";
 import type { AppState, ExerciseDef, ExerciseLog, SessionDef, Target, WorkoutLog } from "./types";
 
 const KEY = "pass-app-state-v1";
@@ -35,11 +35,12 @@ export function targetFor(state: AppState, def: ExerciseDef): Target {
 
 /** Räkna fram nya mål för alla övningar i ett avslutat pass. */
 export function applyLog(state: AppState, log: WorkoutLog): Record<string, Target> {
-  const session = findSession(state, log.sessionId);
   const targets = { ...state.targets };
-  if (!session) return targets;
-  for (const def of session.exercises) {
-    const exLog = log.exercises.find((e) => e.exerciseId === def.id);
+  // Slå upp övningen i hela programmet – samma övning kan finnas i flera pass
+  const defs = new Map(state.program.sessions.flatMap((s) => s.exercises.map((e) => [e.id, e] as const)));
+  for (const exLog of log.exercises) {
+    const def = defs.get(exLog.exerciseId);
+    if (!def) continue;
     const history = exerciseHistory(state.logs, def.id, log.id);
     const t = computeTarget(def, exLog, { history, ratings: log.ratings });
     if (t) targets[def.id] = t;
@@ -50,6 +51,7 @@ export function applyLog(state: AppState, log: WorkoutLog): Record<string, Targe
 function initialState(): AppState {
   const base: AppState = {
     version: 1,
+    programVersion: PROGRAM_VERSION,
     program: defaultProgram,
     logs: [],
     targets: {},
@@ -79,12 +81,18 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppState;
-      if (parsed && parsed.version === 1) return parsed;
+      if (parsed && parsed.version === 1) return migrate(parsed);
     }
   } catch {
     /* ignorerar trasig data */
   }
   return initialState();
+}
+
+/** Ny version av standardprogrammet → byt program, behåll loggar, mål och inställningar. */
+export function migrate(st: AppState): AppState {
+  if ((st.programVersion ?? 1) >= PROGRAM_VERSION) return st;
+  return { ...st, programVersion: PROGRAM_VERSION, program: defaultProgram };
 }
 
 export function saveState(st: AppState) {
@@ -144,5 +152,5 @@ export function importJson(text: string, current: AppState): AppState {
   if (!parsed || parsed.version !== 1 || !parsed.program || !Array.isArray(parsed.logs)) {
     throw new Error("Filen ser inte ut som en backup från appen.");
   }
-  return { ...parsed, settings: { ...parsed.settings, apiKey: current.settings.apiKey || parsed.settings.apiKey } };
+  return migrate({ ...parsed, settings: { ...parsed.settings, apiKey: current.settings.apiKey || parsed.settings.apiKey } });
 }

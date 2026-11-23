@@ -63,6 +63,18 @@ function hadMissAtWeight(log: ExerciseLog, def: ExerciseDef): boolean {
 export function computeTarget(def: ExerciseDef, log: ExerciseLog | undefined, ctx: Context = {}): Target | null {
   const ws = workingSets(log);
   if (ws.length === 0) return null; // inget att basera på – behåll tidigare mål
+  if (def.fixed) {
+    return {
+      weight: def.load === "bw" ? 0 : Math.max(...ws.map((s) => s.weight ?? 0)),
+      repLow: def.repMin,
+      repHigh: def.repMax,
+      sets: def.sets,
+      rir: def.rir,
+      reason: "Kvalitet före mängd – maximal fart och höjd varje rep.",
+      source: "rule",
+      trend: "same",
+    };
+  }
 
   const isBw = def.load === "bw";
   const top = Math.max(...ws.map((s) => s.weight ?? 0));

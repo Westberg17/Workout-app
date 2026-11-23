@@ -46,6 +46,12 @@ describe("computeTarget", () => {
     const bw: ExerciseDef = { ...def, load: "bw", repMin: 15, repMax: 20 };
     expect(computeTarget(bw, log([0, 20, null], [0, 20, null]))!.weight).toBe(2.5);
   });
+  it("fixed-övning (hopp) progressar inte", () => {
+    const jump: ExerciseDef = { ...def, load: "bw", fixed: true, repMin: 3, repMax: 3 };
+    const t = computeTarget(jump, log([0, 3, 3], [0, 3, 3], [0, 3, 3]))!;
+    expect(t.weight).toBe(0);
+    expect(t.trend).toBe("same");
+  });
   it("tom logg → null", () => {
     expect(computeTarget(def, { exerciseId: "x", name: "X", sets: [] })).toBeNull();
   });

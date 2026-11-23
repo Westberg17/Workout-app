@@ -14,6 +14,8 @@ export interface ExerciseDef {
   load: "kg" | "bw";
   /** Reps räknas per sida/ben */
   perSide?: boolean;
+  /** Ingen automatisk progression (t.ex. hopp) */
+  fixed?: boolean;
   note?: string;
 }
 
@@ -123,6 +125,8 @@ export interface Settings {
 
 export interface AppState {
   version: 1;
+  /** Vilken version av standardprogrammet som är inläst */
+  programVersion?: number;
   program: Program;
   logs: WorkoutLog[];
   /** Nästa mål per övnings-id */
